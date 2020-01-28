@@ -1,5 +1,0 @@
-namespace: kurl
-
-resources:
-- namespace.yaml
-- service.yaml

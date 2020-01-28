@@ -1,4 +1,0 @@
-resources:
-- calico.yaml
-patchesStrategicMerge:
-- daemonset-pod-cidr.yaml

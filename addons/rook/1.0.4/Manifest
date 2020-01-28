@@ -1,2 +1,0 @@
-image rook rook/ceph:v1.0.4
-image ceph ceph/ceph:v14.2.0-20190410
