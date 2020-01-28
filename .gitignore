@@ -1,7 +1,2 @@
-/install_scripts/
-/build/
-/dist/
-/tmp/
-/web/templates
-node_modules/
+/bin/
 *DS_Store
