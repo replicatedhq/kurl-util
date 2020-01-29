@@ -1,4 +1,4 @@
-FROM golang:1.13-buster
+FROM golang:1.13-buster AS build
 
 WORKDIR /go/src/github.com/replicatedhq/kurl
 COPY Makefile Makefile
@@ -11,7 +11,7 @@ RUN make build
 
 FROM debian:buster-slim
 
-COPY --from=0 /go/src/github.com/replicatedhq/kurl/bin/* /usr/local/bin/
+COPY --from=build /go/src/github.com/replicatedhq/kurl/bin/* /usr/local/bin/
 
 ARG commit=unknown
 ENV COMMIT=$commit

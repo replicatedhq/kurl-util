@@ -20,12 +20,24 @@ define GIT_SHA
 endef
 endif
 
+.PHONY: kurl-util-image
+kurl-util-image:
+	docker build -t $(KURL_UTIL_IMAGE) -f deploy/Dockerfile --build-arg commit="${GIT_SHA}" .
+
+.PHONY: clean
 clean:
 	rm -rf ./bin
 
-test:
+.PHONY: fmt
+fmt:
+	go fmt ./...
+	goreturns -w .
+
+.PHONY: test
+test: fmt
 	go test ./cmd/...
 
+.PHONY: build
 build: bin/join bin/yamlutil
 
 bin/join:
@@ -33,7 +45,3 @@ bin/join:
 
 bin/yamlutil:
 	go build -o bin/yamlutil cmd/yamlutil/main.go
-
-.PHONY: kurl-util-image
-kurl-util-image:
-	docker build -t $(KURL_UTIL_IMAGE) -f deploy/Dockerfile --build-arg commit="${GIT_SHA}" .
