@@ -30,8 +30,7 @@ clean:
 
 .PHONY: deps
 deps:
-	go get -u golang.org/x/lint/golint
-	go get -u github.com/sqs/goreturns
+	go get golang.org/x/lint/golint
 
 .PHONY: lint
 lint:
@@ -53,8 +52,3 @@ bin/join:
 
 bin/yamlutil:
 	go build -o bin/yamlutil cmd/yamlutil/main.go
-
-.PHONY: fmt
-fmt:
-	go fmt ./...
-	goreturns -w .
