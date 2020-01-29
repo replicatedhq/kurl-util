@@ -26,13 +26,10 @@ clean:
 test:
 	go test ./cmd/...
 
-build: bin/join bin/proxy bin/yamlutil
+build: bin/join bin/yamlutil
 
 bin/join:
 	go build -o bin/join cmd/join/main.go
-
-bin/proxy:
-	go build -o bin/proxy cmd/proxy/main.go
 
 bin/yamlutil:
 	go build -o bin/yamlutil cmd/yamlutil/main.go

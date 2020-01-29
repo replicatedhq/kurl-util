@@ -12,7 +12,6 @@ RUN make build
 FROM debian:buster-slim
 
 COPY --from=0 /go/src/github.com/replicatedhq/kurl/bin/* /usr/local/bin/
-COPY cmd/proxy/assets /assets
 
 ARG commit=unknown
 ENV COMMIT=$commit
