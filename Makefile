@@ -28,6 +28,11 @@ kurl-util-image:
 clean:
 	rm -rf ./bin
 
+.PHONY: deps
+deps:
+	go get -u golang.org/x/lint/golint
+	go get -u github.com/sqs/goreturns
+
 .PHONY: lint
 lint:
 	golint -set_exit_status ./...

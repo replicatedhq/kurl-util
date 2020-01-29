@@ -1,6 +1,6 @@
 steps:
   - label: "test"
-    command: make test
+    command: make deps test
     plugins:
       - docker#v3.5.0:
           always-pull: true
