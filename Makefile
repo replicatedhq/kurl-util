@@ -28,13 +28,16 @@ kurl-util-image:
 clean:
 	rm -rf ./bin
 
-.PHONY: fmt
-fmt:
-	go fmt ./...
-	goreturns -w .
+.PHONY: lint
+lint:
+	golint -set_exit_status ./...
+
+.PHONY: vet
+vet:
+	go vet ./...
 
 .PHONY: test
-test: fmt
+test: lint vet
 	go test ./cmd/...
 
 .PHONY: build
@@ -45,3 +48,8 @@ bin/join:
 
 bin/yamlutil:
 	go build -o bin/yamlutil cmd/yamlutil/main.go
+
+.PHONY: fmt
+fmt:
+	go fmt ./...
+	goreturns -w .
