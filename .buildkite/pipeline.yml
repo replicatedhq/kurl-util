@@ -1,0 +1,23 @@
+steps:
+  - label: "test"
+    command: make deps test
+    plugins:
+      - docker#v3.5.0:
+          always-pull: true
+          image: replicated/gitops-builder:buildkite
+          workdir: /go/src/github.com/replicatedhq/kurl-util
+
+  - wait
+
+  - label: "alpha release"
+    commands:
+      - make kurl-util-image KURL_UTIL_IMAGE=replicated/kurl-util:alpha
+      - docker push replicated/kurl-util:alpha
+    branches: "master"
+
+  - label: "tagged release"
+    commands:
+      - make kurl-util-image KURL_UTIL_IMAGE=replicated/kurl-util:${BUILDKITE_TAG}
+      - docker push replicated/kurl-util:${BUILDKITE_TAG}
+    if: |
+      build.env("BUILDKITE_TAG") =~ /^v20[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9a-z-]+\$/

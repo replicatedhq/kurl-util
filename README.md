@@ -1,20 +1,17 @@
-<div align="center">
-  <img alt="Kurl-logo" src="https://kurl.sh/kurl_logo@2x.png" />
-</div>
-<br/>
+# kURL Utiltiy Image
 
-kURL
-====================================
+Utility image for kURL clusters.
 
-kURL is a Kubernetes installer for airgapped and online clusters.
+## Test manually
 
-kURL relies on `kubeadm` to bring up the Kubernetes control plane, but there are a variety of tasks a system administrator must perform both before and after running kubeadm init in order to have a production-ready Kubernetes cluster, such as installing Docker, configuring Pod networking, or installing kubeadm itself.
-The purpose of this installer is to automate those tasks so that any user can deploy a Kubernetes cluster with a single script.
+run `make kurl-util-image`.
 
-## Getting Started
-For more information please see [kurl.sh/docs/](https://kurl.sh/docs/)
+Then apply kustomize/.
 
-# Community
+## Release
 
-For questions about using kURL, there's a [Replicated Community](https://help.replicated.com/community) forum, and a [#kurl channel in Kubernetes Slack](https://kubernetes.slack.com/channels/kurl).
+To make a new release push a tag in the format `vYYYY.MM.DD-[0-9]`.
 
+```bash
+git tag -a v2020.01.28-0 -m "Release v2020.01.28-0" && git push origin v2020.01.28-0
+```

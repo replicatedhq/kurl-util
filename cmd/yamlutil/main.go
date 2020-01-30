@@ -1,17 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"flag"
+	"io/ioutil"
 	"log"
 	"os"
-	"io/ioutil"
-	"bytes"
 	"strings"
-	"flag"
 
 	"gopkg.in/yaml.v2"
 )
 
-func readFile (path string) []byte {
+func readFile(path string) []byte {
 	file, err := os.Open(path)
 
 	if err != nil {
@@ -36,7 +36,7 @@ func removeField(filePath, yamlField string) {
 
 	resources := bytes.Split(configuration, []byte("---"))
 
-	for _, config :=  range resources {
+	for _, config := range resources {
 
 		var parsed interface{}
 
@@ -50,7 +50,7 @@ func removeField(filePath, yamlField string) {
 			continue
 		}
 
-		delete(parsed.(map[interface {}]interface{}), yamlField)
+		delete(parsed.(map[interface{}]interface{}), yamlField)
 
 		b, err := yaml.Marshal(&parsed)
 
@@ -86,10 +86,10 @@ func retrieveField(filePath, yamlPath string) {
 		log.Fatalf("Yaml path must be of 2 length")
 	}
 
-	concrete := parsed.(map[interface {}]interface{})
+	concrete := parsed.(map[interface{}]interface{})
 	data := concrete[fields[0]]
 
-	concrete = data.(map[interface {}]interface {})
+	concrete = data.(map[interface{}]interface{})
 	data = concrete[fields[1]]
 
 	err = ioutil.WriteFile(filePath, []byte(data.(string)), 0644)
