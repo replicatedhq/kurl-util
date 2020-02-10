@@ -22,8 +22,8 @@ func main() {
 	subnetSize := flag.Int("subnet-size", SubnetSizeDefault, "subnet size request from subnet range")
 	flag.Parse()
 
-	if subnetSize == nil || *subnetSize < 1 || *subnetSize > 32 {
-		panic(fmt.Sprintf("subnet size %v invalid", subnetSize))
+	if *subnetSize < 1 || *subnetSize > 32 {
+		panic(fmt.Sprintf("subnet size %d invalid", *subnetSize))
 	}
 
 	routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
