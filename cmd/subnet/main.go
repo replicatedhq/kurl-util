@@ -1,13 +1,12 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 
 	"github.com/apparentlymart/go-cidr/cidr"
+	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 )
 
@@ -20,41 +19,39 @@ const (
 )
 
 func main() {
-	subnetSize := flag.Int("subnet-size", SubnetSizeDefault, "subnet size ... TODO")
+	subnetSize := flag.Int("subnet-size", SubnetSizeDefault, "subnet size request from subnet range")
 	flag.Parse()
 
 	if subnetSize == nil || *subnetSize < 1 || *subnetSize > 32 {
 		panic(fmt.Sprintf("subnet size %v invalid", subnetSize))
 	}
 
-	routes, err := getRoutes(nil)
+	routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
 	if err != nil {
-		log.Panic(err)
+		panic(errors.Wrap(err, "failed to list routes"))
 	}
 
 	_, subnetRange, err := net.ParseCIDR(SubnetRange)
 	if err != nil {
-		log.Panic(err)
+		panic(errors.Wrap(err, "failed to parse cidr"))
 	}
 
 	subnet, err := FindAvailableSubnet(*subnetSize, subnetRange, routes)
 	if err != nil {
-		log.Panic(err)
+		panic(errors.Wrap(err, "failed to find available subnet"))
 	}
 
 	fmt.Println(subnet)
 }
 
-// FindAvailableSubnet will find an available subnet for a given size in a
-// given range.
+// FindAvailableSubnet will find an available subnet for a given size in a given range.
 func FindAvailableSubnet(subnetSize int, subnetRange *net.IPNet, routes []netlink.Route) (*net.IPNet, error) {
 	startIP, _ := cidr.AddressRange(subnetRange)
 
 	_, subnet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", startIP, subnetSize))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "parse cidr")
 	}
-
 	if checkNetworkFree(subnet, routes) {
 		return subnet, nil
 	}
@@ -67,7 +64,6 @@ func FindAvailableSubnet(subnetSize int, subnetRange *net.IPNet, routes []netlin
 		}
 
 		if checkNetworkFree(subnet, routes) {
-			fmt.Println("FREE", subnet)
 			return subnet, nil
 		}
 	}
@@ -82,29 +78,6 @@ func checkNetworkFree(subnet *net.IPNet, routes []netlink.Route) bool {
 		}
 	}
 	return true
-}
-
-// getRoutes will return all routes from the host with ignoreIfaceNames
-// excluded.
-func getRoutes(ignoreIfaceNames map[string]struct{}) ([]netlink.Route, error) {
-	ignoreIfaceIndices := make(map[int]struct{})
-	for ifaceName := range ignoreIfaceNames {
-		if iface, err := net.InterfaceByName(ifaceName); err == nil {
-			ignoreIfaceIndices[iface.Index] = struct{}{}
-		}
-	}
-	routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
-	if err != nil {
-		return nil, err
-	}
-	var filtered []netlink.Route
-	for _, route := range routes {
-		if _, found := ignoreIfaceIndices[route.LinkIndex]; found {
-			continue
-		}
-		filtered = append(filtered, route)
-	}
-	return filtered, nil
 }
 
 func overlaps(n1, n2 *net.IPNet) bool {
