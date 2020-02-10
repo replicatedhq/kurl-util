@@ -65,6 +65,17 @@ func TestFindAvailableSubnet(t *testing.T) {
 			want: mustParseCIDR("10.0.1.0/24"),
 		},
 		{
+			name: "range",
+			args: args{
+				subnetSize:  22,
+				subnetRange: mustParseCIDR("10.32.0.0/16"),
+				routes: []netlink.Route{
+					makeRoute("10.0.0.0", 16),
+				},
+			},
+			want: mustParseCIDR("10.32.0.0/22"),
+		},
+		{
 			name: "none available",
 			args: args{
 				subnetSize:  16,

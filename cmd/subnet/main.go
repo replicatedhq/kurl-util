@@ -14,12 +14,13 @@ const (
 	// SubnetSizeDefault is the default subnet size when unspecified in the subnet-size flag
 	SubnetSizeDefault = 22
 
-	// SubnetRange represents the cidr range from which we can allocate subnets
-	SubnetRange = "10.0.0.0/8"
+	// SubnetAllocRangeDefault represents the default ip range from which to allocate subnets
+	SubnetAllocRangeDefault = "10.0.0.0/8"
 )
 
 func main() {
 	subnetSize := flag.Int("subnet-size", SubnetSizeDefault, "subnet size request from subnet range")
+	subnetAllocRangeStr := flag.String("subnet-alloc-range", SubnetAllocRangeDefault, "ip range from which to allocate subnets")
 	flag.Parse()
 
 	if *subnetSize < 1 || *subnetSize > 32 {
@@ -31,12 +32,12 @@ func main() {
 		panic(errors.Wrap(err, "failed to list routes"))
 	}
 
-	_, subnetRange, err := net.ParseCIDR(SubnetRange)
+	_, subnetAllocRange, err := net.ParseCIDR(*subnetAllocRangeStr)
 	if err != nil {
 		panic(errors.Wrap(err, "failed to parse cidr"))
 	}
 
-	subnet, err := FindAvailableSubnet(*subnetSize, subnetRange, routes)
+	subnet, err := FindAvailableSubnet(*subnetSize, subnetAllocRange, routes)
 	if err != nil {
 		panic(errors.Wrap(err, "failed to find available subnet"))
 	}
@@ -69,8 +70,8 @@ func FindAvailableSubnet(subnetSize int, subnetRange *net.IPNet, routes []netlin
 	}
 }
 
-// checkNetworkFree will return true if it does not overlap any route
-// from the routes passed in as an argument.
+// checkNetworkFree will return true if it does not overlap any route from the routes passed in as
+// an argument.
 func checkNetworkFree(subnet *net.IPNet, routes []netlink.Route) bool {
 	for _, route := range routes {
 		if route.Dst != nil && overlaps(route.Dst, subnet) {
