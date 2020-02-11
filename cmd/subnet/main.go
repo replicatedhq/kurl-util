@@ -32,12 +32,12 @@ func main() {
 	debug := *debugFlag
 
 	if subnetSize < 1 || subnetSize > 32 {
-		panic(fmt.Sprintf("subnet size %d invalid", subnetSize))
+		panic(fmt.Sprintf("subnet-size %d invalid", subnetSize))
 	}
 
 	_, subnetAllocRange, err := net.ParseCIDR(*subnetAllocRangeFlag)
 	if err != nil {
-		panic(errors.Wrap(err, "failed to parse cidr"))
+		panic(errors.Wrap(err, "failed to parse subnet-alloc-range cidr"))
 	}
 
 	var excludeSubnets []*net.IPNet
@@ -45,7 +45,7 @@ func main() {
 		for _, s := range strings.Split(*excludeSubnetFlag, ",") {
 			_, subnet, err := net.ParseCIDR(s)
 			if err != nil {
-				panic(errors.Wrap(err, "failed to parse cidr"))
+				panic(errors.Wrap(err, "failed to parse exclude-subnet cidr"))
 			}
 			excludeSubnets = append(excludeSubnets, subnet)
 		}
