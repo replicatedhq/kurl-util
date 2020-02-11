@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/apparentlymart/go-cidr/cidr"
 	"github.com/pkg/errors"
@@ -21,7 +22,10 @@ const (
 func main() {
 	subnetSize := flag.Int("subnet-size", SubnetSizeDefault, "subnet size request from subnet range")
 	subnetAllocRangeStr := flag.String("subnet-alloc-range", SubnetAllocRangeDefault, "ip range from which to allocate subnets")
+	debugFlag := flag.Bool("debug", false, "enable debug logging")
 	flag.Parse()
+
+	debug := *debugFlag
 
 	if *subnetSize < 1 || *subnetSize > 32 {
 		panic(fmt.Sprintf("subnet size %d invalid", *subnetSize))
@@ -31,13 +35,18 @@ func main() {
 	if err != nil {
 		panic(errors.Wrap(err, "failed to list routes"))
 	}
+	if debug {
+		for _, route := range routes {
+			fmt.Fprintf(os.Stderr, "Found route %s\n", route)
+		}
+	}
 
 	_, subnetAllocRange, err := net.ParseCIDR(*subnetAllocRangeStr)
 	if err != nil {
 		panic(errors.Wrap(err, "failed to parse cidr"))
 	}
 
-	subnet, err := FindAvailableSubnet(*subnetSize, subnetAllocRange, routes)
+	subnet, err := FindAvailableSubnet(*subnetSize, subnetAllocRange, routes, debug)
 	if err != nil {
 		panic(errors.Wrap(err, "failed to find available subnet"))
 	}
@@ -46,14 +55,14 @@ func main() {
 }
 
 // FindAvailableSubnet will find an available subnet for a given size in a given range.
-func FindAvailableSubnet(subnetSize int, subnetRange *net.IPNet, routes []netlink.Route) (*net.IPNet, error) {
+func FindAvailableSubnet(subnetSize int, subnetRange *net.IPNet, routes []netlink.Route, debug bool) (*net.IPNet, error) {
 	startIP, _ := cidr.AddressRange(subnetRange)
 
 	_, subnet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", startIP, subnetSize))
 	if err != nil {
 		return nil, errors.Wrap(err, "parse cidr")
 	}
-	if checkNetworkFree(subnet, routes) {
+	if checkNetworkFree(subnet, routes, debug) {
 		return subnet, nil
 	}
 
@@ -64,7 +73,7 @@ func FindAvailableSubnet(subnetSize int, subnetRange *net.IPNet, routes []netlin
 			return nil, errors.New("no available subnet found")
 		}
 
-		if checkNetworkFree(subnet, routes) {
+		if checkNetworkFree(subnet, routes, debug) {
 			return subnet, nil
 		}
 	}
@@ -72,9 +81,12 @@ func FindAvailableSubnet(subnetSize int, subnetRange *net.IPNet, routes []netlin
 
 // checkNetworkFree will return true if it does not overlap any route from the routes passed in as
 // an argument.
-func checkNetworkFree(subnet *net.IPNet, routes []netlink.Route) bool {
+func checkNetworkFree(subnet *net.IPNet, routes []netlink.Route, debug bool) bool {
 	for _, route := range routes {
 		if route.Dst != nil && overlaps(route.Dst, subnet) {
+			if debug {
+				fmt.Fprintf(os.Stderr, "Route %s overlaps with subnet %s\n", route, subnet)
+			}
 			return false
 		}
 	}
