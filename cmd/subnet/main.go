@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/apparentlymart/go-cidr/cidr"
 	"github.com/pkg/errors"
@@ -20,15 +21,34 @@ const (
 )
 
 func main() {
-	subnetSize := flag.Int("subnet-size", SubnetSizeDefault, "subnet size request from subnet range")
-	subnetAllocRangeStr := flag.String("subnet-alloc-range", SubnetAllocRangeDefault, "ip range from which to allocate subnets")
+	subnetSizeFlag := flag.Int("subnet-size", SubnetSizeDefault, "subnet size request from subnet range")
+	subnetAllocRangeFlag := flag.String("subnet-alloc-range", SubnetAllocRangeDefault, "ip range from which to allocate subnets")
+	excludeSubnetFlag := flag.String("exclude-subnet", "", "comma separated list of subnets to exclude")
 	debugFlag := flag.Bool("debug", false, "enable debug logging")
+
 	flag.Parse()
 
+	subnetSize := *subnetSizeFlag
 	debug := *debugFlag
 
-	if *subnetSize < 1 || *subnetSize > 32 {
-		panic(fmt.Sprintf("subnet size %d invalid", *subnetSize))
+	if subnetSize < 1 || subnetSize > 32 {
+		panic(fmt.Sprintf("subnet-size %d invalid", subnetSize))
+	}
+
+	_, subnetAllocRange, err := net.ParseCIDR(*subnetAllocRangeFlag)
+	if err != nil {
+		panic(errors.Wrap(err, "failed to parse subnet-alloc-range cidr"))
+	}
+
+	var excludeSubnets []*net.IPNet
+	if *excludeSubnetFlag != "" {
+		for _, s := range strings.Split(*excludeSubnetFlag, ",") {
+			_, subnet, err := net.ParseCIDR(s)
+			if err != nil {
+				panic(errors.Wrap(err, "failed to parse exclude-subnet cidr"))
+			}
+			excludeSubnets = append(excludeSubnets, subnet)
+		}
 	}
 
 	routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
@@ -41,12 +61,17 @@ func main() {
 		}
 	}
 
-	_, subnetAllocRange, err := net.ParseCIDR(*subnetAllocRangeStr)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to parse cidr"))
+	for _, subnet := range excludeSubnets {
+		route := netlink.Route{
+			Dst: subnet,
+		}
+		if debug {
+			fmt.Fprintf(os.Stderr, "Exluding additional route %s\n", route)
+		}
+		routes = append(routes, route)
 	}
 
-	subnet, err := FindAvailableSubnet(*subnetSize, subnetAllocRange, routes, debug)
+	subnet, err := FindAvailableSubnet(subnetSize, subnetAllocRange, routes, debug)
 	if err != nil {
 		panic(errors.Wrap(err, "failed to find available subnet"))
 	}
