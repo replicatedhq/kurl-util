@@ -100,7 +100,7 @@ func TestFindAvailableSubnet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := FindAvailableSubnet(tt.args.subnetSize, tt.args.subnetRange, tt.args.routes)
+			got, err := FindAvailableSubnet(tt.args.subnetSize, tt.args.subnetRange, tt.args.routes, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FindAvailableSubnet() error = %v, wantErr %v", err, tt.wantErr)
 				return
