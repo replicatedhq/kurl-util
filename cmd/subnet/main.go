@@ -76,7 +76,7 @@ func main() {
 		panic(errors.Wrap(err, "failed to find available subnet"))
 	}
 
-	fmt.Println(subnet)
+	fmt.Print(subnet)
 }
 
 // FindAvailableSubnet will find an available subnet for a given size in a given range.
