@@ -13,26 +13,26 @@ import (
 )
 
 const (
-	// SubnetSizeDefault is the default subnet size when unspecified in the subnet-size flag
-	SubnetSizeDefault = 22
+	// CIDRRangeDefault is the default subnet size when unspecified in the subnet-size flag
+	CIDRRangeDefault = 22
 
 	// SubnetAllocRangeDefault represents the default ip range from which to allocate subnets
 	SubnetAllocRangeDefault = "10.0.0.0/8"
 )
 
 func main() {
-	subnetSizeFlag := flag.Int("subnet-size", SubnetSizeDefault, "subnet size request from subnet range")
+	cidrRangeFlag := flag.Int("cidr-range", CIDRRangeDefault, "the cidr range to request from the ip range specified by subnet-alloc-range")
 	subnetAllocRangeFlag := flag.String("subnet-alloc-range", SubnetAllocRangeDefault, "ip range from which to allocate subnets")
 	excludeSubnetFlag := flag.String("exclude-subnet", "", "comma separated list of subnets to exclude")
 	debugFlag := flag.Bool("debug", false, "enable debug logging")
 
 	flag.Parse()
 
-	subnetSize := *subnetSizeFlag
+	cidrRange := *cidrRangeFlag
 	debug := *debugFlag
 
-	if subnetSize < 1 || subnetSize > 32 {
-		panic(fmt.Sprintf("subnet-size %d invalid", subnetSize))
+	if cidrRange < 1 || cidrRange > 32 {
+		panic(fmt.Sprintf("subnet-size %d invalid", cidrRange))
 	}
 
 	_, subnetAllocRange, err := net.ParseCIDR(*subnetAllocRangeFlag)
@@ -71,7 +71,7 @@ func main() {
 		routes = append(routes, route)
 	}
 
-	subnet, err := FindAvailableSubnet(subnetSize, subnetAllocRange, routes, debug)
+	subnet, err := FindAvailableSubnet(cidrRange, subnetAllocRange, routes, debug)
 	if err != nil {
 		panic(errors.Wrap(err, "failed to find available subnet"))
 	}
@@ -80,10 +80,10 @@ func main() {
 }
 
 // FindAvailableSubnet will find an available subnet for a given size in a given range.
-func FindAvailableSubnet(subnetSize int, subnetRange *net.IPNet, routes []netlink.Route, debug bool) (*net.IPNet, error) {
+func FindAvailableSubnet(cidrRange int, subnetRange *net.IPNet, routes []netlink.Route, debug bool) (*net.IPNet, error) {
 	startIP, _ := cidr.AddressRange(subnetRange)
 
-	_, subnet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", startIP, subnetSize))
+	_, subnet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", startIP, cidrRange))
 	if err != nil {
 		return nil, errors.Wrap(err, "parse cidr")
 	}
@@ -92,7 +92,7 @@ func FindAvailableSubnet(subnetSize int, subnetRange *net.IPNet, routes []netlin
 	}
 
 	for {
-		subnet, _ = cidr.NextSubnet(subnet, subnetSize)
+		subnet, _ = cidr.NextSubnet(subnet, cidrRange)
 		firstIP, lastIP := cidr.AddressRange(subnet)
 		if !subnetRange.Contains(firstIP) || !subnetRange.Contains(lastIP) {
 			return nil, errors.New("no available subnet found")
