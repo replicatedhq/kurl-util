@@ -10,7 +10,7 @@ import (
 
 func TestFindAvailableSubnet(t *testing.T) {
 	type args struct {
-		subnetSize  int
+		cidrRange   int
 		subnetRange *net.IPNet
 		routes      []netlink.Route
 	}
@@ -23,7 +23,7 @@ func TestFindAvailableSubnet(t *testing.T) {
 		{
 			name: "basic",
 			args: args{
-				subnetSize:  16,
+				cidrRange:   16,
 				subnetRange: mustParseCIDR("10.0.0.0/8"),
 				routes:      []netlink.Route{},
 			},
@@ -32,7 +32,7 @@ func TestFindAvailableSubnet(t *testing.T) {
 		{
 			name: "taken",
 			args: args{
-				subnetSize:  16,
+				cidrRange:   16,
 				subnetRange: mustParseCIDR("10.0.0.0/8"),
 				routes: []netlink.Route{
 					makeRoute("10.0.0.0", 16),
@@ -43,7 +43,7 @@ func TestFindAvailableSubnet(t *testing.T) {
 		{
 			name: "smaller",
 			args: args{
-				subnetSize:  22,
+				cidrRange:   22,
 				subnetRange: mustParseCIDR("10.0.0.0/8"),
 				routes: []netlink.Route{
 					makeRoute("10.0.0.0", 22),
@@ -55,7 +55,7 @@ func TestFindAvailableSubnet(t *testing.T) {
 		{
 			name: "gap",
 			args: args{
-				subnetSize:  24,
+				cidrRange:   24,
 				subnetRange: mustParseCIDR("10.0.0.0/8"),
 				routes: []netlink.Route{
 					makeRoute("10.0.0.0", 24),
@@ -67,7 +67,7 @@ func TestFindAvailableSubnet(t *testing.T) {
 		{
 			name: "range",
 			args: args{
-				subnetSize:  22,
+				cidrRange:   22,
 				subnetRange: mustParseCIDR("10.32.0.0/16"),
 				routes: []netlink.Route{
 					makeRoute("10.0.0.0", 16),
@@ -78,7 +78,7 @@ func TestFindAvailableSubnet(t *testing.T) {
 		{
 			name: "none available",
 			args: args{
-				subnetSize:  16,
+				cidrRange:   16,
 				subnetRange: mustParseCIDR("10.0.0.0/8"),
 				routes: []netlink.Route{
 					makeRoute("10.0.0.0", 8),
@@ -89,7 +89,7 @@ func TestFindAvailableSubnet(t *testing.T) {
 		{
 			name: "none available 10.17",
 			args: args{
-				subnetSize:  22,
+				cidrRange:   22,
 				subnetRange: mustParseCIDR("10.17.0.0/16"),
 				routes: []netlink.Route{
 					makeRoute("10.17.0.0", 16),
@@ -97,12 +97,32 @@ func TestFindAvailableSubnet(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "optimize",
+			args: args{
+				cidrRange:   32,
+				subnetRange: mustParseCIDR("10.17.0.0/16"),
+				routes: []netlink.Route{
+					makeRoute("10.17.0.0", 16),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "request bigger than alloc range",
+			args: args{
+				cidrRange:   16,
+				subnetRange: mustParseCIDR("10.17.0.0/22"),
+				routes:      []netlink.Route{},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := FindAvailableSubnet(tt.args.subnetSize, tt.args.subnetRange, tt.args.routes, false)
+			got, err := FindAvailableSubnet(tt.args.cidrRange, tt.args.subnetRange, tt.args.routes, false)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("FindAvailableSubnet() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("FindAvailableSubnet() error = %v, wantErr %v, got %v", err, tt.wantErr, got)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -121,11 +141,10 @@ func mustParseCIDR(s string) *net.IPNet {
 }
 
 func makeRoute(ip string, bits int) netlink.Route {
-	dst := &net.IPNet{
-		IP:   net.ParseIP(ip),
-		Mask: net.CIDRMask(bits, 32),
+	return netlink.Route{
+		Dst: &net.IPNet{
+			IP:   net.ParseIP(ip),
+			Mask: net.CIDRMask(bits, 32),
+		},
 	}
-
-	src := net.ParseIP(ip)
-	return netlink.Route{LinkIndex: 0, Dst: dst, Src: src}
 }

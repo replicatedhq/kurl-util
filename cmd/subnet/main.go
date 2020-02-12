@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/binary"
 	"flag"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"strings"
@@ -63,6 +65,7 @@ func main() {
 
 	for _, subnet := range excludeSubnets {
 		route := netlink.Route{
+			Src: subnet.IP,
 			Dst: subnet,
 		}
 		if debug {
@@ -87,35 +90,68 @@ func FindAvailableSubnet(cidrRange int, subnetRange *net.IPNet, routes []netlink
 	if err != nil {
 		return nil, errors.Wrap(err, "parse cidr")
 	}
-	if checkNetworkFree(subnet, routes, debug) {
-		return subnet, nil
+	if debug {
+		fmt.Fprintf(os.Stderr, "First subnet %s\n", subnet)
 	}
 
 	for {
-		subnet, _ = cidr.NextSubnet(subnet, cidrRange)
 		firstIP, lastIP := cidr.AddressRange(subnet)
 		if !subnetRange.Contains(firstIP) || !subnetRange.Contains(lastIP) {
 			return nil, errors.New("no available subnet found")
 		}
 
-		if checkNetworkFree(subnet, routes, debug) {
+		route := findFirstOverlappingRoute(subnet, routes)
+		if route == nil {
 			return subnet, nil
+		}
+		if len(subnet.IP) == net.IPv4len {
+			if route.Dst.IP.To4() == nil {
+				continue
+			}
+			route.Dst.IP = route.Dst.IP.To4()
+		}
+		if debug {
+			fmt.Fprintf(os.Stderr, "Route %s overlaps with subnet %s\n", *route, subnet)
+		}
+
+		firstIP, lastIP = cidr.AddressRange(route.Dst)
+		subnet, _ = cidr.NextSubnet(route.Dst, cidrRange)
+		if debug {
+			fmt.Fprintf(os.Stderr, "Next subnet %s\n", subnet)
 		}
 	}
 }
 
-// checkNetworkFree will return true if it does not overlap any route from the routes passed in as
-// an argument.
-func checkNetworkFree(subnet *net.IPNet, routes []netlink.Route, debug bool) bool {
+func getLastIP(subnet *net.IPNet) net.IP {
+	ones, _ := subnet.Mask.Size()
+	networksize := math.Pow(2, float64(32-ones))
+
+	// Reduce network size by one as we really need last IP address in the range,
+	// not first one of subsequent range
+	return int2ip(ip2int(subnet.IP) + uint32(networksize) - 1)
+}
+
+func ip2int(ip net.IP) uint32 {
+	if len(ip) == 16 {
+		return binary.BigEndian.Uint32(ip[12:16])
+	}
+	return binary.BigEndian.Uint32(ip)
+}
+
+func int2ip(nn uint32) net.IP {
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, nn)
+	return ip
+}
+
+// findFirstOverlappingRoute will return the first overlapping route with the subnet specified
+func findFirstOverlappingRoute(subnet *net.IPNet, routes []netlink.Route) *netlink.Route {
 	for _, route := range routes {
 		if route.Dst != nil && overlaps(route.Dst, subnet) {
-			if debug {
-				fmt.Fprintf(os.Stderr, "Route %s overlaps with subnet %s\n", route, subnet)
-			}
-			return false
+			return &route
 		}
 	}
-	return true
+	return nil
 }
 
 func overlaps(n1, n2 *net.IPNet) bool {
