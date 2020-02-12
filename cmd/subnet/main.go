@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/binary"
 	"flag"
 	"fmt"
-	"math"
 	"net"
 	"os"
 	"strings"
@@ -84,6 +82,8 @@ func main() {
 
 // FindAvailableSubnet will find an available subnet for a given size in a given range.
 func FindAvailableSubnet(cidrRange int, subnetRange *net.IPNet, routes []netlink.Route, debug bool) (*net.IPNet, error) {
+	forceV4 := len(subnetRange.IP) == net.IPv4len
+
 	startIP, _ := cidr.AddressRange(subnetRange)
 
 	_, subnet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", startIP, cidrRange))
@@ -104,10 +104,8 @@ func FindAvailableSubnet(cidrRange int, subnetRange *net.IPNet, routes []netlink
 		if route == nil {
 			return subnet, nil
 		}
-		if len(subnet.IP) == net.IPv4len {
-			if route.Dst.IP.To4() == nil {
-				continue
-			}
+		if forceV4 {
+			// NOTE: this may break with v6 addresses
 			route.Dst.IP = route.Dst.IP.To4()
 		}
 		if debug {
@@ -120,28 +118,6 @@ func FindAvailableSubnet(cidrRange int, subnetRange *net.IPNet, routes []netlink
 			fmt.Fprintf(os.Stderr, "Next subnet %s\n", subnet)
 		}
 	}
-}
-
-func getLastIP(subnet *net.IPNet) net.IP {
-	ones, _ := subnet.Mask.Size()
-	networksize := math.Pow(2, float64(32-ones))
-
-	// Reduce network size by one as we really need last IP address in the range,
-	// not first one of subsequent range
-	return int2ip(ip2int(subnet.IP) + uint32(networksize) - 1)
-}
-
-func ip2int(ip net.IP) uint32 {
-	if len(ip) == 16 {
-		return binary.BigEndian.Uint32(ip[12:16])
-	}
-	return binary.BigEndian.Uint32(ip)
-}
-
-func int2ip(nn uint32) net.IP {
-	ip := make(net.IP, 4)
-	binary.BigEndian.PutUint32(ip, nn)
-	return ip
 }
 
 // findFirstOverlappingRoute will return the first overlapping route with the subnet specified
