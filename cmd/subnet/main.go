@@ -63,6 +63,7 @@ func main() {
 
 	for _, subnet := range excludeSubnets {
 		route := netlink.Route{
+			Src: subnet.IP,
 			Dst: subnet,
 		}
 		if debug {
@@ -81,41 +82,53 @@ func main() {
 
 // FindAvailableSubnet will find an available subnet for a given size in a given range.
 func FindAvailableSubnet(cidrRange int, subnetRange *net.IPNet, routes []netlink.Route, debug bool) (*net.IPNet, error) {
+	forceV4 := len(subnetRange.IP) == net.IPv4len
+
 	startIP, _ := cidr.AddressRange(subnetRange)
 
 	_, subnet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", startIP, cidrRange))
 	if err != nil {
 		return nil, errors.Wrap(err, "parse cidr")
 	}
-	if checkNetworkFree(subnet, routes, debug) {
-		return subnet, nil
+	if debug {
+		fmt.Fprintf(os.Stderr, "First subnet %s\n", subnet)
 	}
 
 	for {
-		subnet, _ = cidr.NextSubnet(subnet, cidrRange)
 		firstIP, lastIP := cidr.AddressRange(subnet)
 		if !subnetRange.Contains(firstIP) || !subnetRange.Contains(lastIP) {
 			return nil, errors.New("no available subnet found")
 		}
 
-		if checkNetworkFree(subnet, routes, debug) {
+		route := findFirstOverlappingRoute(subnet, routes)
+		if route == nil {
 			return subnet, nil
+		}
+		if forceV4 {
+			// NOTE: this may break with v6 addresses
+			if ip4 := route.Dst.IP.To4(); ip4 != nil {
+				route.Dst.IP = ip4
+			}
+		}
+		if debug {
+			fmt.Fprintf(os.Stderr, "Route %s overlaps with subnet %s\n", *route, subnet)
+		}
+
+		subnet, _ = cidr.NextSubnet(route.Dst, cidrRange)
+		if debug {
+			fmt.Fprintf(os.Stderr, "Next subnet %s\n", subnet)
 		}
 	}
 }
 
-// checkNetworkFree will return true if it does not overlap any route from the routes passed in as
-// an argument.
-func checkNetworkFree(subnet *net.IPNet, routes []netlink.Route, debug bool) bool {
+// findFirstOverlappingRoute will return the first overlapping route with the subnet specified
+func findFirstOverlappingRoute(subnet *net.IPNet, routes []netlink.Route) *netlink.Route {
 	for _, route := range routes {
 		if route.Dst != nil && overlaps(route.Dst, subnet) {
-			if debug {
-				fmt.Fprintf(os.Stderr, "Route %s overlaps with subnet %s\n", route, subnet)
-			}
-			return false
+			return &route
 		}
 	}
-	return true
+	return nil
 }
 
 func overlaps(n1, n2 *net.IPNet) bool {
