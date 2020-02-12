@@ -112,7 +112,6 @@ func FindAvailableSubnet(cidrRange int, subnetRange *net.IPNet, routes []netlink
 			fmt.Fprintf(os.Stderr, "Route %s overlaps with subnet %s\n", *route, subnet)
 		}
 
-		firstIP, lastIP = cidr.AddressRange(route.Dst)
 		subnet, _ = cidr.NextSubnet(route.Dst, cidrRange)
 		if debug {
 			fmt.Fprintf(os.Stderr, "Next subnet %s\n", subnet)
