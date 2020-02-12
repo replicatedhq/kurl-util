@@ -106,7 +106,9 @@ func FindAvailableSubnet(cidrRange int, subnetRange *net.IPNet, routes []netlink
 		}
 		if forceV4 {
 			// NOTE: this may break with v6 addresses
-			route.Dst.IP = route.Dst.IP.To4()
+			if ip4 := route.Dst.IP.To4(); ip4 != nil {
+				route.Dst.IP = ip4
+			}
 		}
 		if debug {
 			fmt.Fprintf(os.Stderr, "Route %s overlaps with subnet %s\n", *route, subnet)
