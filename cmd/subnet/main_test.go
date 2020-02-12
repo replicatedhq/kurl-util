@@ -117,6 +117,30 @@ func TestFindAvailableSubnet(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "ipv4 in ipv6 range",
+			args: args{
+				cidrRange:   16,
+				subnetRange: mustParseCIDR("10.0.0.0/8"),
+				routes: []netlink.Route{
+					makeRoute("0:0:0:0:0:ffff:a00:1", 16),
+					makeRoute("10.1.0.0", 16),
+				},
+			},
+			want: mustParseCIDR("10.2.0.0/16"),
+		},
+		{
+			name: "no ipv4 in ipv6 range",
+			args: args{
+				cidrRange:   16,
+				subnetRange: mustParseCIDR("10.0.0.0/8"),
+				routes: []netlink.Route{
+					makeRoute("0:ffff:a00:1:0:0:0:0", 16),
+					makeRoute("10.0.0.0", 16),
+				},
+			},
+			want: mustParseCIDR("10.1.0.0/16"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
