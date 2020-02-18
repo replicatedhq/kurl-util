@@ -6,8 +6,6 @@ Utility image for kURL clusters.
 
 run `make kurl-util-image`.
 
-Then apply kustomize/.
-
 ## Release
 
 To make a new release push a tag in the format `vYYYY.MM.DD-[0-9]`.

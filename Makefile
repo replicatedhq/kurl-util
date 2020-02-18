@@ -45,10 +45,7 @@ test: lint vet
 	go test ./cmd/...
 
 .PHONY: build
-build: bin/join bin/yamlutil bin/subnet
-
-bin/join:
-	go build -o bin/join cmd/join/main.go
+build: bin/yamlutil bin/subnet
 
 bin/yamlutil:
 	go build -o bin/yamlutil cmd/yamlutil/main.go
