@@ -1,4 +1,4 @@
-# kURL Utiltiy Image
+# kURL Utility Image
 
 Utility image for kURL clusters.
 
